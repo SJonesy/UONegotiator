@@ -100,8 +100,9 @@ namespace UONegotiator.UOPacket
                 full = bytes[35];
                 timezone = bytes[36];
                 // TODO this needs to come from a config or something,
-                // this is just the interger representation of 1.0.0.127
-                address = BitConverter.GetBytes(16777343);
+                // this is just the interger representation of 192.168.86.249 
+                // which gets correctly stored as 249 86 168 192
+                address = BitConverter.GetBytes(3232257785);
             }
 
             public byte[] GetBytes()

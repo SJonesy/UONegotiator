@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Pipes;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -25,8 +26,8 @@ namespace UONegotiator
             NetworkStream clientStream = client.GetStream();
             NetworkStream serverStream = server.GetStream();
 
-            UOPacket.Seed seedPacket = new UOPacket.Seed(50, 7, 0, 10, 3);
-            WriteToServer(seedPacket.GetBytes());
+            // UOPacket.Seed seedPacket = new UOPacket.Seed(50, 7, 0, 10, 3);
+            // WriteToServer(seedPacket.GetBytes());
 
             // TODO: .Connected does nothing
             while (client.Connected && server.Connected)
@@ -53,10 +54,8 @@ namespace UONegotiator
                     var packetResult = incomingPacket.OnReceiveFromServer();
                     if (packetResult == PacketAction.FORWARD)
                     {
-                        WriteToServer(incomingPacket.GetBytes());
+                        WriteToClient(incomingPacket.GetBytes());
                     }
-
-                    WriteToClient(bytes);
                 }
             }
 
@@ -72,7 +71,7 @@ namespace UONegotiator
 
         private void WriteToClient(byte[] bytes)
         {
-            NetworkStream clientStream = server.GetStream();
+            NetworkStream clientStream = client.GetStream();
             clientStream.Write(bytes);
             Output("S->C", bytes);
         }
@@ -80,50 +79,30 @@ namespace UONegotiator
         private void Output(string prefix, byte[] bytes)
         {
             List<byte> byteList = new List<byte>(bytes);
-            int chunkCount = byteList.Count / 16;
-            int lastChunk = byteList.Count % 16;
+            int chunkLength = 16;
+            int chunkCount = byteList.Count / chunkLength;
             for (int i = 0; i <= chunkCount; i++)
             {
-                // TODO you're in the middle of working on this
-                var byteArray = byteList.GetRange(i * 16, Math.Min(16, byteList.Count) ).ToArray();
+                int offset = i * chunkLength;
+                int count = Math.Min(chunkLength, byteList.Count - offset);
+
+                var byteArray = byteList.GetRange(offset, count).ToArray();
+
                 string hex = BitConverter.ToString(byteArray).Replace("-", " ");
                 string msg = "";
                 foreach (var b in byteArray)
                 {
                     if (b.Equals(0x00))
                         msg += ".";
+                    else if ((int)b < 32)
+                        msg += "?";
                     else
                         msg += Encoding.ASCII.GetString(new byte[] { b });
                 }
-
-                Console.WriteLine("[{0}] {1}: {2}  {3}", sessionIdentifier, prefix, hex, msg);
+                string padding = String.Concat(Enumerable.Repeat("   ", 16 - count));
+                Console.WriteLine("[{0}] {1}: {2} {3} {4}", sessionIdentifier, prefix, hex, padding, msg);
             }
 
-
-            // Start
-            //var byteChunk = new byte[16];
-
-            //int incomingOffset = 0;
-            //while (incomingOffset < bytes.Length)
-            //{
-            //    int length = Math.Min(byteChunk.Length, bytes.Length - incomingOffset);
-
-            //    Buffer.BlockCopy(bytes, incomingOffset, byteChunk, 0, length);
-
-            //    incomingOffset += length;
-
-            //    string hex = BitConverter.ToString(byteChunk).Replace("-", " ");
-            //    string msg = "";
-            //    foreach (var b in byteChunk)
-            //    {
-            //        if (b.Equals(0x00))
-            //            msg += ".";
-            //        else
-            //            msg += Encoding.ASCII.GetString(new byte[] { b });
-            //    }
-
-            //    Console.WriteLine("[{0}] {1}: {2}  {3}", sessionIdentifier, prefix, hex, msg);
-            //}
         }
     }
 }
