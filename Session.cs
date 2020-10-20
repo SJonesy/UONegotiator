@@ -22,39 +22,83 @@ namespace UONegotiator
             Console.WriteLine("[{0}] Creating session.", sessionIdentifier);
 
             client = incomingClient;
+            // TODO:  get this from a config or something
             server = new TcpClient("127.0.0.1", 2593);
             NetworkStream clientStream = client.GetStream();
             NetworkStream serverStream = server.GetStream();
+            bool smartReadPackets = true;
 
-            // UOPacket.Seed seedPacket = new UOPacket.Seed(50, 7, 0, 10, 3);
-            // WriteToServer(seedPacket.GetBytes());
+            List<byte> clientBytesToParse = new List<byte>();
+            List<byte> serverBytesToParse = new List<byte>();
 
             // TODO: .Connected does nothing
             while (client.Connected && server.Connected)
             {
                 if (client.Available > 0)
                 {
-                    var bytes = new byte[client.Available];
-                    clientStream.Read(bytes, 0, client.Available);
+                    byte[] bytes = new byte[client.ReceiveBufferSize];
+                    int numReadBytes = clientStream.Read(bytes, 0, client.Available);
+                    clientBytesToParse.AddRange(bytes[0..numReadBytes]);
+                    while (clientBytesToParse.Count > 0)
+                    {
+                        byte cmd = clientBytesToParse[0];
+                        int size = PacketUtil.GetSize(cmd);
+                        if (size > clientBytesToParse.Count)
+                        {
+                            // We haven't received the entire packet yet
+                            break;
+                        }
+                        if (size == 0)
+                        {
+                            Console.WriteLine("[{0}] Unknown packet 0x{1:x2} detected, switching to dumb-packet-forwarding mode.", sessionIdentifier, cmd);
+                            smartReadPackets = false;
+                        }
 
-                    UOPacket.BaseUOPacket incomingPacket = PacketUtil.GetPacket(bytes);
-                    var packetResult = incomingPacket.OnReceiveFromClient();
-                    if (packetResult == PacketAction.FORWARD)
-                    { 
-                        WriteToServer(incomingPacket.GetBytes());
+                        UOPacket.BaseUOPacket incomingPacket = PacketUtil.GetPacket(clientBytesToParse.GetRange(0, size));
+                        clientBytesToParse.RemoveRange(0, size);
+                        var packetResult = incomingPacket.OnReceiveFromClient();
+                        if (packetResult == PacketAction.FORWARD)
+                        {
+                            WriteToServer(incomingPacket.GetBytes());
+                        }
+                        else if (packetResult == PacketAction.DROP)
+                        {
+                            Console.WriteLine("[{0}] C->S: Dropping packet {1} with size {2}", sessionIdentifier, incomingPacket.cmd, PacketUtil.GetSize(incomingPacket.cmd));
+                        }
                     }
                 }
 
                 if (server.Available > 0)
                 {
-                    var bytes = new byte[server.Available];
-                    serverStream.Read(bytes, 0, server.Available);
-
-                    UOPacket.BaseUOPacket incomingPacket = PacketUtil.GetPacket(bytes);
-                    var packetResult = incomingPacket.OnReceiveFromServer();
-                    if (packetResult == PacketAction.FORWARD)
+                    byte[] bytes = new byte[server.ReceiveBufferSize];
+                    int numReadBytes = serverStream.Read(bytes, 0, server.Available);
+                    serverBytesToParse.AddRange(bytes[0..numReadBytes]);
+                    while (serverBytesToParse.Count > 0)
                     {
-                        WriteToClient(incomingPacket.GetBytes());
+                        byte cmd = serverBytesToParse[0];
+                        int size = PacketUtil.GetSize(cmd);
+                        if (size > serverBytesToParse.Count)
+                        {
+                            // We haven't received the entire packet yet
+                            break;
+                        }
+                        if (size == 0)
+                        {
+                            Console.WriteLine("[{0}] Unknown packet 0x{1:x2} detected, switching to dumb-packet-forwarding mode.", sessionIdentifier, cmd);
+                            smartReadPackets = false;
+                        }
+
+                        UOPacket.BaseUOPacket incomingPacket = PacketUtil.GetPacket(serverBytesToParse.GetRange(0, size));
+                        serverBytesToParse.RemoveRange(0, size);
+                        var packetResult = incomingPacket.OnReceiveFromServer();
+                        if (packetResult == PacketAction.FORWARD)
+                        {
+                            WriteToClient(incomingPacket.GetBytes());
+                        }
+                        else if (packetResult == PacketAction.DROP)
+                        {
+                            Console.WriteLine("[{0}] S->C: Dropping packet {1} with size {2}", sessionIdentifier, incomingPacket.cmd, PacketUtil.GetSize(incomingPacket.cmd));
+                        }
                     }
                 }
             }

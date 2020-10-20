@@ -29,50 +29,42 @@ this packet.
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace UONegotiator.UOPacket
 {
     class Seed : BaseUOPacket
     {
-        public int Size = 21;
+        public static int s_Size = 21;
 
-        private byte cmd = CMD.SEED;
-        private byte[] seed;
-        private byte[] client_major;
-        private byte[] client_minor;
-        private byte[] client_revision;
-        private byte[] client_patch;
+        public new byte cmd = CMD.SEED;
+        private List<byte> seed;
+        private List<byte> client_major;
+        private List<byte> client_minor;
+        private List<byte> client_revision;
+        private List<byte> client_patch;
 
-        public Seed(byte[] seed, byte[] client_major, byte[] client_minor, byte[] client_revision, byte[] client_patch)
+        public Seed(List<byte> bytes)
         {
-            this.seed = seed;
-            this.client_major = client_major;
-            this.client_minor = client_minor;
-            this.client_revision = client_revision;
-            this.client_patch = client_patch;
-        }
-
-        public Seed(int seed, int client_major, int client_minor, int client_revision, int client_patch)
-        {
-            this.seed = BitConverter.GetBytes(seed);
-            this.client_major = BitConverter.GetBytes(client_major);
-            this.client_minor = BitConverter.GetBytes(client_minor);
-            this.client_revision = BitConverter.GetBytes(client_revision);
-            this.client_patch = BitConverter.GetBytes(client_patch);
+            seed            = bytes.GetRange(1, 4);
+            client_major    = bytes.GetRange(5, 4);
+            client_minor    = bytes.GetRange(9, 4);
+            client_revision = bytes.GetRange(13, 4);
+            client_patch    = bytes.GetRange(17, 4);
         }
 
         public override byte[] GetBytes()
         {
-            byte[] bytes = new byte[21];
-            bytes[0] = cmd;
-            Buffer.BlockCopy(seed, 0, bytes, 1, 4);
-            Buffer.BlockCopy(client_major, 0, bytes, 5, 4);
-            Buffer.BlockCopy(client_minor, 0, bytes, 9, 4);
-            Buffer.BlockCopy(client_revision, 0, bytes, 13, 4);
-            Buffer.BlockCopy(client_patch, 0, bytes, 17, 4);
+            List<byte> bytes = new List<byte>();
+            bytes.Add(cmd);
+            bytes.AddRange(seed);
+            bytes.AddRange(client_major);
+            bytes.AddRange(client_minor);
+            bytes.AddRange(client_revision);
+            bytes.AddRange(client_patch);
 
-            return bytes;
+            return bytes.ToArray();
         }
     }
 }

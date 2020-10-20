@@ -34,6 +34,7 @@ Server IP has to be sent in reverse order. For example, 192.168.0.1 is sent as 0
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
@@ -43,25 +44,22 @@ namespace UONegotiator.UOPacket
 {
     public class ServerList : BaseUOPacket
     {
-        public int Size = 21;
+        public static int s_Size = 46;
 
-        private byte cmd = CMD.SERVER_LIST;
-        private byte[] length;
+        public new byte cmd = CMD.SERVER_LIST;
+
+        private List<byte> length;
         private byte systemInfoFlag;
-        private byte[] numberOfServers;
+        private List<byte> numberOfServers;
         private ServerListItem gameServer;
 
-        public ServerList(byte[] bytes)
+        public ServerList(List<byte> bytes)
         {
-            length = new byte[2];
-            numberOfServers = new byte[2];
-
-            Buffer.BlockCopy(bytes, 1, length, 0, 2);
-            systemInfoFlag = bytes[3];
-            Buffer.BlockCopy(bytes, 4, numberOfServers, 0, 2);
-            byte[] gameServerBytes = new byte[40];
-            Buffer.BlockCopy(bytes, 6, gameServerBytes, 0, 40);
-            gameServer = new ServerListItem(gameServerBytes);
+            Debug.Assert(bytes[0] == CMD.SERVER_LIST);
+            length          = bytes.GetRange(1, 2);
+            systemInfoFlag  = bytes[3];
+            numberOfServers = bytes.GetRange(4, 2);
+            gameServer      = new ServerListItem(bytes.GetRange(6, 40).ToArray());
         }
 
         public override byte[] GetBytes()
@@ -101,7 +99,7 @@ namespace UONegotiator.UOPacket
                 timezone = bytes[36];
                 // TODO this needs to come from a config or something,
                 // this is just the interger representation of 192.168.86.249 
-                // which gets correctly stored as 249 86 168 192
+                // (my iP) which gets correctly stored as 249 86 168 192
                 address = BitConverter.GetBytes(3232257785);
             }
 
