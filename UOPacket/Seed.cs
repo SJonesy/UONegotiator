@@ -36,9 +36,7 @@ namespace UONegotiator.UOPacket
 {
     class Seed : BaseUOPacket
     {
-        public static int s_Size = 21;
-
-        public new byte cmd = CMD.SEED;
+        private byte cmd = CMD.SEED;
         private List<byte> seed;
         private List<byte> client_major;
         private List<byte> client_minor;
@@ -66,6 +64,8 @@ namespace UONegotiator.UOPacket
 
             return bytes.ToArray();
         }
+
+        public override byte GetCmd() { return this.cmd; }
     }
 }
 

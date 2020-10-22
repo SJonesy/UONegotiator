@@ -24,9 +24,7 @@ namespace UONegotiator.UOPacket
 {
     class LoginRequest : BaseUOPacket
     {
-        public static int s_Size = 62;
-
-        public new byte cmd = CMD.LOGIN_REQUEST;
+        private byte cmd = CMD.LOGIN_REQUEST;
         private List<byte> accountName;
         private List<byte> password;
         private byte nextLoginKey;
@@ -48,5 +46,7 @@ namespace UONegotiator.UOPacket
 
             return bytes.ToArray();
         }
+
+        public override byte GetCmd() { return this.cmd; }
     }
 }

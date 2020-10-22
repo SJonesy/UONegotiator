@@ -12,141 +12,110 @@ namespace UONegotiator
 {
     class Session
     {
-        private TcpClient client;
-        private TcpClient server;
-        private int sessionIdentifier;
+        // We get the key in 0x8C from the server, and send it in 0x91 from the client in
+        // the next session.. we aren't currently using this, but maybe it will be necessary
+        // for some connection restoration later on.
+        private byte[] key;
 
-        public Session (TcpClient incomingClient, int incomingSessionIdentifier)
+        public Session(TcpClient incomingClient, int incomingSessionIdentifier, ref Queue<byte[]> keyQueue)
         {
-            sessionIdentifier = incomingSessionIdentifier;
+            int sessionIdentifier = incomingSessionIdentifier;
+            key = new byte[4];
             Console.WriteLine("[{0}] Creating session.", sessionIdentifier);
 
-            client = incomingClient;
+            TcpClient clientTcpClient = incomingClient;
             // TODO:  get this from a config or something
-            server = new TcpClient("127.0.0.1", 2593);
-            NetworkStream clientStream = client.GetStream();
-            NetworkStream serverStream = server.GetStream();
+            TcpClient serverTcpClient = new TcpClient("127.0.0.1", 2593);
             bool smartReadPackets = true;
 
-            List<byte> clientBytesToParse = new List<byte>();
-            List<byte> serverBytesToParse = new List<byte>();
+            Connection client = new Connection(clientTcpClient, "S->C", sessionIdentifier);
+            Connection server = new Connection(serverTcpClient, "C->S", sessionIdentifier);
 
-            // TODO: .Connected does nothing
-            while (client.Connected && server.Connected)
+            // We must first copy our key packet over, because the client weirdly sends
+            // [4 BYTE KEY]0x91[4 BYTE KEY] so there's no packet cmd to parse..
+            if (keyQueue.Count > 0)
             {
-                if (client.Available > 0)
-                {
-                    byte[] bytes = new byte[client.ReceiveBufferSize];
-                    int numReadBytes = clientStream.Read(bytes, 0, client.Available);
-                    clientBytesToParse.AddRange(bytes[0..numReadBytes]);
-                    while (clientBytesToParse.Count > 0)
-                    {
-                        byte cmd = clientBytesToParse[0];
-                        int size = PacketUtil.GetSize(cmd);
-                        if (size > clientBytesToParse.Count)
-                        {
-                            // We haven't received the entire packet yet
-                            break;
-                        }
-                        if (size == 0)
-                        {
-                            Console.WriteLine("[{0}] Unknown packet 0x{1:x2} detected, switching to dumb-packet-forwarding mode.", sessionIdentifier, cmd);
-                            smartReadPackets = false;
-                        }
+                key = keyQueue.Dequeue();
+                Console.WriteLine("[{0}] Key {1} found, forwarding 4 key bytes from the client:", sessionIdentifier, BitConverter.ToString(key));
+                List<byte> incomingKey = client.ChompBytes(4);
 
-                        UOPacket.BaseUOPacket incomingPacket = PacketUtil.GetPacket(clientBytesToParse.GetRange(0, size));
-                        clientBytesToParse.RemoveRange(0, size);
-                        var packetResult = incomingPacket.OnReceiveFromClient();
-                        if (packetResult == PacketAction.FORWARD)
-                        {
-                            WriteToServer(incomingPacket.GetBytes());
-                        }
-                        else if (packetResult == PacketAction.DROP)
-                        {
-                            Console.WriteLine("[{0}] C->S: Dropping packet {1} with size {2}", sessionIdentifier, incomingPacket.cmd, PacketUtil.GetSize(incomingPacket.cmd));
-                        }
-                    }
+                server.Write(incomingKey.ToArray(), CMD.UNKNOWN);
+            }
+
+            while (client.Connected() && server.Connected())
+            {
+                if (!smartReadPackets)
+                {
+                    // TODO: This doesn't actually seem to work, as 
+                    // soon as I start dumb-forwarding packets the game
+                    // stops working..
+                    client.CopyTo(server.GetStream());
+                    server.CopyTo(client.GetStream());
+                    continue;
                 }
 
-                if (server.Available > 0)
+                if (client.ReadData() || client.PendingParse() || client.PendingDecompress())
                 {
-                    byte[] bytes = new byte[server.ReceiveBufferSize];
-                    int numReadBytes = serverStream.Read(bytes, 0, server.Available);
-                    serverBytesToParse.AddRange(bytes[0..numReadBytes]);
-                    while (serverBytesToParse.Count > 0)
-                    {
-                        byte cmd = serverBytesToParse[0];
-                        int size = PacketUtil.GetSize(cmd);
-                        if (size > serverBytesToParse.Count)
-                        {
-                            // We haven't received the entire packet yet
-                            break;
-                        }
-                        if (size == 0)
-                        {
-                            Console.WriteLine("[{0}] Unknown packet 0x{1:x2} detected, switching to dumb-packet-forwarding mode.", sessionIdentifier, cmd);
-                            smartReadPackets = false;
-                        }
+                    var packet = client.GetNextPacket(Source.CLIENT);
+                    if (packet == null)  // Waiting for more data
+                        continue;
 
-                        UOPacket.BaseUOPacket incomingPacket = PacketUtil.GetPacket(serverBytesToParse.GetRange(0, size));
-                        serverBytesToParse.RemoveRange(0, size);
-                        var packetResult = incomingPacket.OnReceiveFromServer();
-                        if (packetResult == PacketAction.FORWARD)
-                        {
-                            WriteToClient(incomingPacket.GetBytes());
-                        }
-                        else if (packetResult == PacketAction.DROP)
-                        {
-                            Console.WriteLine("[{0}] S->C: Dropping packet {1} with size {2}", sessionIdentifier, incomingPacket.cmd, PacketUtil.GetSize(incomingPacket.cmd));
-                        }
+                    byte cmd = packet.GetCmd();
+
+                    PacketAction action = packet.OnReceiveFromClient();
+                    if (action == PacketAction.FORWARD)
+                    {
+                        server.Write(packet.GetBytes(), cmd);
+                    }
+                    else if (action == PacketAction.DROP)
+                    {
+                        Console.WriteLine("[{0}] C->S: Dropping packet {1:x2}", sessionIdentifier, cmd);
+                    }
+
+                    if (cmd == CMD.GAME_SERVER_LOGIN)
+                    {
+                        server.DecompressionEnabled = true;
+                        client.CompressionEnabled = true;
+                    }
+                }
+                if (server.ReadData() || server.PendingParse() || server.PendingDecompress())
+                {
+                    var packet = server.GetNextPacket(Source.SERVER);
+                    if (packet == null)  // Waiting for more data
+                        continue;
+
+                    byte cmd = packet.GetCmd();
+
+                    if (cmd == CMD.CONNECT_TO_GAME_SERVER)
+                    {
+                        List<byte> bytes = packet.GetBytesAsList();
+                        // Get last 4 bytes
+                        key = bytes.Skip(Math.Max(0, bytes.Count() - 4)).ToArray();
+
+                        keyQueue.Enqueue(key);
+                    }
+
+                    PacketAction action = packet.OnReceiveFromServer();
+                    if (action == PacketAction.FORWARD)
+                    {
+                        client.Write(packet.GetBytes(), cmd);
+                    }
+                    else if (action == PacketAction.DROP)
+                    {
+                        Console.WriteLine("[{0}] S->C: Dropping packet {1:x2}", sessionIdentifier, cmd);
+                    }
+
+                    if (cmd == CMD.CONNECT_TO_GAME_SERVER)
+                    {
+                        Console.WriteLine("[{0}] packet 0x8C (Connect) received from the server. Gracefully ending session.", sessionIdentifier, cmd);
+                        break;
                     }
                 }
             }
 
+            client.Close();
+            server.Close();
             Console.WriteLine("[{0}] Session ended.", sessionIdentifier);
-        }
-
-        private void WriteToServer(byte[] bytes)
-        {
-            NetworkStream serverStream = server.GetStream();
-            serverStream.Write(bytes);
-            Output("C->S", bytes);
-        }
-
-        private void WriteToClient(byte[] bytes)
-        {
-            NetworkStream clientStream = client.GetStream();
-            clientStream.Write(bytes);
-            Output("S->C", bytes);
-        }
-
-        private void Output(string prefix, byte[] bytes)
-        {
-            List<byte> byteList = new List<byte>(bytes);
-            int chunkLength = 16;
-            int chunkCount = byteList.Count / chunkLength;
-            for (int i = 0; i <= chunkCount; i++)
-            {
-                int offset = i * chunkLength;
-                int count = Math.Min(chunkLength, byteList.Count - offset);
-
-                var byteArray = byteList.GetRange(offset, count).ToArray();
-
-                string hex = BitConverter.ToString(byteArray).Replace("-", " ");
-                string msg = "";
-                foreach (var b in byteArray)
-                {
-                    if (b.Equals(0x00))
-                        msg += ".";
-                    else if ((int)b < 32)
-                        msg += "?";
-                    else
-                        msg += Encoding.ASCII.GetString(new byte[] { b });
-                }
-                string padding = String.Concat(Enumerable.Repeat("   ", 16 - count));
-                Console.WriteLine("[{0}] {1}: {2} {3} {4}", sessionIdentifier, prefix, hex, padding, msg);
-            }
-
         }
     }
 }

@@ -6,9 +6,7 @@ namespace UONegotiator.UOPacket
 {
     class SelectServer : BaseUOPacket
     {
-        public static int s_Size = 3;
-
-        public new byte cmd = CMD.SELECT_SERVER;
+        private byte cmd = CMD.SELECT_SERVER;
         private List<byte> chosenShard;
 
         public SelectServer(List<byte> bytes)
@@ -24,5 +22,7 @@ namespace UONegotiator.UOPacket
 
             return bytes.ToArray();
         }
+
+        public override byte GetCmd() { return this.cmd; }
     }
 }

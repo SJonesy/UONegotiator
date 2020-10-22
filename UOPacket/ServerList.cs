@@ -44,9 +44,7 @@ namespace UONegotiator.UOPacket
 {
     public class ServerList : BaseUOPacket
     {
-        public static int s_Size = 46;
-
-        public new byte cmd = CMD.SERVER_LIST;
+        private byte cmd = CMD.SERVER_LIST;
 
         private List<byte> length;
         private byte systemInfoFlag;
@@ -115,6 +113,8 @@ namespace UONegotiator.UOPacket
                 return bytes.ToArray();
             }
         }
+
+        public override byte GetCmd() { return this.cmd; }
     }
 }
 

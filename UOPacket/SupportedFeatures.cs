@@ -7,14 +7,12 @@ namespace UONegotiator.UOPacket
 {
     class SupportedFeatures : BaseUOPacket
     {
-        public static int s_Size = 3;
-
-        public new byte cmd = CMD.SUPPORTED_FEATURES;
+        private byte cmd = CMD.SUPPORTED_FEATURES;
         private List<byte> flags;
 
         public SupportedFeatures(List<byte> bytes)
         {
-            flags = bytes.GetRange(1, 2);
+            flags = bytes.GetRange(1, 4);
         }
 
         public override byte[] GetBytes()
@@ -26,9 +24,6 @@ namespace UONegotiator.UOPacket
             return bytes.ToArray();
         }
 
-        public override PacketAction OnReceiveFromServer() 
-        { 
-            return PacketAction.DROP; 
-        }
+        public override byte GetCmd() { return this.cmd; }
     }
 }
