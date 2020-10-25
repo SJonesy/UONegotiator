@@ -15,8 +15,8 @@ namespace UONegotiator
             TcpListener listener = new TcpListener(IPAddress.Loopback, 2700);
             listener.Start();
 
-            // TODO: queue might be overkill, do I ever need more than 1 key stored at a time?
-            Queue<byte[]> keyQueue = new Queue<byte[]>();
+			// TODO: queue might be overkill, do I ever need more than 1 key stored at a time?
+			Queue<byte[]> keyQueue = new Queue<byte[]>();
 
             int sessionIdentifiter = 0;
             while (true)

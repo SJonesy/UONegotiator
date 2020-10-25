@@ -37,7 +37,7 @@ namespace UONegotiator
             {
                 key = keyQueue.Dequeue();
                 Console.WriteLine("[{0}] Key {1} found, forwarding 4 key bytes from the client:", sessionIdentifier, BitConverter.ToString(key));
-                List<byte> incomingKey = client.ChompBytes(4);
+                List<byte> incomingKey = client.ChompBytesFromStream(4);
 
                 server.Write(incomingKey.ToArray(), CMD.UNKNOWN);
             }
@@ -74,6 +74,7 @@ namespace UONegotiator
 
                     if (cmd == CMD.GAME_SERVER_LOGIN)
                     {
+                        Console.WriteLine("[{0}] Packet 0x91 sent to the server.  Enabling compression.", sessionIdentifier);
                         server.DecompressionEnabled = true;
                         client.CompressionEnabled = true;
                     }

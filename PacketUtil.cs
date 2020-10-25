@@ -280,7 +280,7 @@ namespace UONegotiator
                 case CMD.PICK_UP_ITEM:                      // 0x07
                     return 7;
                 case CMD.DROP_ITEM:                         // 0x08
-                    return 14;
+                    return 15;
                 case CMD.SINGLE_CLICK:                      // 0x09
                     return 5;
                 case CMD.EDIT:                              // 0x0A
@@ -326,7 +326,7 @@ namespace UONegotiator
                 case CMD.DRAW_CONTAINER:                    // 0x24
                     return 7;
                 case CMD.ADD_ITEM_TO_CONTAINER:             // 0x25
-                    return 20 / 21;
+                    return 21;
                 case CMD.KICK_PLAYER:                       // 0x26
                     return 5;
                 case CMD.REJECT_MOVE_ITEM_REQUEST:          // 0x27

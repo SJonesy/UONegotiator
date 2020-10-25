@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Security.Cryptography;
+using System.Runtime.InteropServices;
 using System.Text;
-using System.Xml;
 using UONegotiator.UOPacket;
 
 namespace UONegotiator
@@ -18,6 +17,7 @@ namespace UONegotiator
         private List<byte> decompressBuffer;
         private string name;
         private int sessionIdentifier;
+        private Compressor compressor;
 
         public bool CompressionEnabled;
         public bool DecompressionEnabled;
@@ -30,6 +30,7 @@ namespace UONegotiator
             this.sessionIdentifier = sessionIdentifier;
             this.parseBuffer = new List<byte>();
             this.decompressBuffer = new List<byte>();
+            this.compressor = new Compressor();
         }
 
         public void Write(byte[] bytes, byte cmd)
@@ -38,9 +39,9 @@ namespace UONegotiator
 
             if (CompressionEnabled)
             {
-                byte[] buffer = new byte[bytes.Length * 4];
+                byte[] buffer = new byte[tcpClient.ReceiveBufferSize];
                 int numCompressedBytes = 0;
-                Compression.Compress(bytes, 0, bytes.Length, buffer, ref numCompressedBytes);
+                compressor.Compress(bytes, 0, bytes.Length, buffer, ref numCompressedBytes);
                 stream.Write(buffer[0..numCompressedBytes]);
             }
             else
@@ -61,6 +62,9 @@ namespace UONegotiator
                 int count = Math.Min(chunkLength, byteList.Count - offset);
 
                 var byteArray = byteList.GetRange(offset, count).ToArray();
+
+                if (byteArray.Length == 0)
+                    continue; // packet equally divisible by 16
 
                 string hex = BitConverter.ToString(byteArray).Replace("-", " ");
                 string msg = "";
@@ -106,7 +110,7 @@ namespace UONegotiator
             byte[] buffer = new byte[tcpClient.ReceiveBufferSize];
             int numBytesDecompressed = 0;
 
-            numBytesDecompressed = Decompression.Decompress(ref buffer, tcpClient.ReceiveBufferSize, decompressBuffer.ToArray(), decompressBuffer.Count - 1);
+            numBytesDecompressed = compressor.Decompress(ref buffer, tcpClient.ReceiveBufferSize, decompressBuffer.ToArray(), decompressBuffer.Count);
             if (numBytesDecompressed > 0)
             {
                 parseBuffer.AddRange(buffer[0..numBytesDecompressed]);
@@ -119,6 +123,7 @@ namespace UONegotiator
         public BaseUOPacket GetNextPacket(Source source)
         {
             byte cmd = parseBuffer[0];
+
             int size = PacketUtil.GetSize(parseBuffer, source);
             if (size > parseBuffer.Count)
             {
@@ -127,8 +132,9 @@ namespace UONegotiator
             }
             if (size == 0)
             {
-                Console.WriteLine("[{0}] Unknown packet 0x{1:x2} detected, chomping byte..", sessionIdentifier, cmd);
-                this.ChompBytes(1);
+                Console.WriteLine("[{0}] {1}: Unknown packet 0x{2:x2} detected, dumb forwarding..", sessionIdentifier, name, cmd);
+                stream.Write(parseBuffer.ToArray(), 0, 1);
+                parseBuffer.RemoveAt(0);
                 return null;
             }
 
@@ -137,9 +143,9 @@ namespace UONegotiator
             return packet;
         }
 
-        public List<byte> ChompBytes(int numBytes)
+        public List<byte> ChompBytesFromStream(int numBytes)
         {
-            byte[] bytes = new byte[4];
+            byte[] bytes = new byte[numBytes];
             stream.Read(bytes, 0, numBytes);
             
             return new List<byte>(bytes);
