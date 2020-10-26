@@ -26,7 +26,6 @@ namespace UONegotiator
             TcpClient clientTcpClient = incomingClient;
             // TODO:  get this from a config or something
             TcpClient serverTcpClient = new TcpClient("127.0.0.1", 2593);
-            bool smartReadPackets = true;
 
             Connection client = new Connection(clientTcpClient, "S->C", sessionIdentifier);
             Connection server = new Connection(serverTcpClient, "C->S", sessionIdentifier);
@@ -44,16 +43,6 @@ namespace UONegotiator
 
             while (client.Connected() && server.Connected())
             {
-                if (!smartReadPackets)
-                {
-                    // TODO: This doesn't actually seem to work, as 
-                    // soon as I start dumb-forwarding packets the game
-                    // stops working..
-                    client.CopyTo(server.GetStream());
-                    server.CopyTo(client.GetStream());
-                    continue;
-                }
-
                 if (client.ReadData() || client.PendingParse() || client.PendingDecompress())
                 {
                     var packet = client.GetNextPacket(Source.CLIENT);

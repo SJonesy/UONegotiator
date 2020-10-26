@@ -34,8 +34,4 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\UOCompression\UOCompression.vcxproj" />
-  </ItemGroup>
-
 </Project>

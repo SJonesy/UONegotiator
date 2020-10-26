@@ -5,8 +5,6 @@ VisualStudioVersion = 16.0.30406.217
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UONegotiator", "UONegotiator.csproj", "{92F472C5-6BAC-4A85-A564-E1FE75D9C7EC}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UOCompression", "..\UOCompression\UOCompression.vcxproj", "{201A1FD0-E845-4860-86ED-2D15E8BC4A34}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,17 +27,6 @@ Global
 		{92F472C5-6BAC-4A85-A564-E1FE75D9C7EC}.Release|x64.Build.0 = Release|Any CPU
 		{92F472C5-6BAC-4A85-A564-E1FE75D9C7EC}.Release|x86.ActiveCfg = Release|Any CPU
 		{92F472C5-6BAC-4A85-A564-E1FE75D9C7EC}.Release|x86.Build.0 = Release|Any CPU
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Debug|Any CPU.Build.0 = Debug|x64
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Debug|x64.ActiveCfg = Debug|x64
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Debug|x64.Build.0 = Debug|x64
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Debug|x86.ActiveCfg = Debug|Win32
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Debug|x86.Build.0 = Debug|Win32
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Release|Any CPU.ActiveCfg = Release|Win32
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Release|x64.ActiveCfg = Release|x64
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Release|x64.Build.0 = Release|x64
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Release|x86.ActiveCfg = Release|Win32
-		{201A1FD0-E845-4860-86ED-2D15E8BC4A34}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

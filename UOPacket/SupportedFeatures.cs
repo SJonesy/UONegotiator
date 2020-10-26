@@ -24,6 +24,11 @@ namespace UONegotiator.UOPacket
             return bytes.ToArray();
         }
 
+        public override PacketAction OnReceiveFromServer()
+        {
+            return PacketAction.DROP;
+        }
+
         public override byte GetCmd() { return this.cmd; }
     }
 }
