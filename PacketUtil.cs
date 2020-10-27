@@ -248,6 +248,8 @@ namespace UONegotiator
                     return new UOPacket.ChatText(bytes);
                 case CMD.GAME_SERVER_LOGIN:
                     return new UOPacket.GameServerLogin(bytes);
+                case CMD.KRRIOS_CLIENT_SPECIAL:
+                    return new UOPacket.KrriosClientSpecial(bytes);
                 default:
                     return new UOPacket.GenericPacket(bytes);
             }
@@ -574,8 +576,6 @@ namespace UONegotiator
                 case CMD.SEASONAL_INFORMATION:              // 0xBC
                     return 3;
                 case CMD.CLIENT_VERSION:                    // 0xBD
-                    if (source == Source.SERVER)
-                        return 2;
                     return GetVariableLength(1, bytes);
                 case CMD.ASSIST_VERSION:                    // 0xBE
                     return GetVariableLength(1, bytes);

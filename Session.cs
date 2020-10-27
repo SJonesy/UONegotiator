@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
+using UONegotiator.UOPacket;
 
 namespace UONegotiator
 {
@@ -25,7 +26,7 @@ namespace UONegotiator
 
             TcpClient clientTcpClient = incomingClient;
             // TODO:  get this from a config or something
-            TcpClient serverTcpClient = new TcpClient("127.0.0.1", 2593);
+            TcpClient serverTcpClient = new TcpClient("play.uooutlands.com", 2593);
 
             Connection client = new Connection(clientTcpClient, "S->C", sessionIdentifier);
             Connection server = new Connection(serverTcpClient, "C->S", sessionIdentifier);
@@ -99,6 +100,16 @@ namespace UONegotiator
                     {
                         Console.WriteLine("[{0}] packet 0x8C (Connect) received from the server. Gracefully ending session.", sessionIdentifier, cmd);
                         break;
+                    }
+
+                    if (cmd == CMD.KRRIOS_CLIENT_SPECIAL)
+                    {
+                        // We're just another good guy using Razor (we already)
+                        // dropped 0xF0 when it came from the server.
+                        byte[] razorIdentifyingPacket = new byte[] {
+                            0xF0, 0x00, 0x04, 0xFF
+                        };
+                        server.Write(razorIdentifyingPacket, 0xF0);
                     }
                 }
             }
