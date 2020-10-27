@@ -104,8 +104,8 @@ namespace UONegotiator
 
                     if (cmd == CMD.KRRIOS_CLIENT_SPECIAL)
                     {
-                        // We're just another good guy using Razor (we already)
-                        // dropped 0xF0 when it came from the server.
+                        // We're just another good guy using Razor (we dropped 0xF0 from
+                        // the server, and this is the reply that Razor usually sends).
                         byte[] razorIdentifyingPacket = new byte[] {
                             0xF0, 0x00, 0x04, 0xFF
                         };
